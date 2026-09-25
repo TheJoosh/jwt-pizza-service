@@ -3,7 +3,7 @@ const app = require('../src/service');
 //const { DB } = require('../src/database/database.js');
 
 const testUser = { name: 'pizza diner', email: 'reg@test.com', password: 'a' };
-//let testUserAuthToken;
+let testUserAuthToken = "";
 
 function randomName() {
   return Math.random().toString(36).substring(2, 12);
