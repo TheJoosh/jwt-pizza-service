@@ -3,7 +3,7 @@ const app = require('../src/service');
 //const { DB } = require('../src/database/database.js');
 
 const testUser = { name: 'pizza diner', email: 'reg@test.com', password: 'a' };
-let testUserAuthToken;
+//let testUserAuthToken;
 
 function randomName() {
   return Math.random().toString(36).substring(2, 12);
@@ -32,5 +32,6 @@ test('login', async () => {
   expect(loginRes.body.token).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/);
 
   const { password, ...user } = { ...testUser, roles: [{ role: 'diner' }] };
+  expect(password).not.toBe(null);
   expect(loginRes.body.user).toMatchObject(user);
 });
