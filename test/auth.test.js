@@ -81,3 +81,30 @@ test('get current user', async () => {
     roles: [{ role: 'diner' }],
   });
 });
+
+test('get menu', async () => {
+  const res = await request(app).get('/api/order/menu');
+
+  expect(res.status).toBe(200);
+  expect(Array.isArray(res.body)).toBe(true);
+});
+
+test('add menu item', async () => {
+  const menuItem = {
+    title: `Test pizza ${Date.now()}`,
+    description: 'Test pizza',
+    image: 'pizza9.png',
+    price: 0.01,
+  };
+
+  const res = await request(app)
+    .put('/api/order/menu')
+    .set('Authorization', `Bearer ${adminAuthToken}`)
+    .send(menuItem);
+
+  expect(res.status).toBe(200);
+  expect(Array.isArray(res.body)).toBe(true);
+  expect(res.body).toEqual(
+    expect.arrayContaining([expect.objectContaining(menuItem)]),
+  );
+});
