@@ -1,9 +1,21 @@
 const request = require('supertest');
 const app = require('../src/service');
-//const { DB } = require('../src/database/database.js');
+const { DB, Role } = require('../src/database/database.js');
 
-const testUser = { name: 'pizza diner', email: 'reg@test.com', password: 'a' };
-let testUserAuthToken = "";
+const testUser = { name: 'pizza diner', email: `${Math.random().toString(36).substring(2, 12)}@test.com`, password: 'admin' };
+
+const adminUser = {
+  name: 'pizza admin',
+  email: `${Math.random().toString(36).substring(2, 12)}@admin.com`,
+  password: 'admin',
+};
+
+let testUserAuthToken;
+let adminAuthToken;
+let franchiseId;
+let storeId;
+
+const tokenPattern = /^[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+$/;
 
 function randomName() {
   return Math.random().toString(36).substring(2, 12);
@@ -31,7 +43,6 @@ test('login', async () => {
   const auth = testUserAuthToken;
   expect(loginRes.status).toBe(200);
   expect(loginRes.body.token).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/);
-  expect(testUserAuthToken).toBe(auth);
 
   const { password, ...user } = { ...testUser, roles: [{ role: 'diner' }] };
   expect(password).not.toBe(null);
