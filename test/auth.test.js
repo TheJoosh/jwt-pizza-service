@@ -57,11 +57,14 @@ test('register', async () => {
 
 test('login', async () => {
   const loginRes = await request(app).put('/api/auth').send(testUser);
-  const auth = testUserAuthToken;
-  expect(loginRes.status).toBe(200);
-  expect(loginRes.body.token).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/);
 
-  const { password, ...user } = { ...testUser, roles: [{ role: 'diner' }] };
-  expect(password).not.toBe(null);
-  expect(loginRes.body.user).toMatchObject(user);
+  expect(loginRes.status).toBe(200);
+  expect(loginRes.body.token).toMatch(tokenPattern);
+  expect(loginRes.body.user).toMatchObject({
+    name: testUser.name,
+    email: testUser.email,
+    roles: [{ role: 'diner' }],
+  });
+
+  testUserAuthToken = loginRes.body.token;
 });
