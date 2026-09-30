@@ -68,3 +68,16 @@ test('login', async () => {
 
   testUserAuthToken = loginRes.body.token;
 });
+
+test('get current user', async () => {
+  const res = await request(app)
+    .get('/api/user/me')
+    .set('Authorization', `Bearer ${testUserAuthToken}`);
+
+  expect(res.status).toBe(200);
+  expect(res.body).toMatchObject({
+    name: testUser.name,
+    email: testUser.email,
+    roles: [{ role: 'diner' }],
+  });
+});
