@@ -17,11 +17,6 @@ let storeId;
 
 const tokenPattern = /^[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+$/;
 
-function randomName() {
-  return Math.random().toString(36).substring(2, 12);
-}
-
-
 beforeAll(async () => {
   const registerRes = await request(app).post('/api/auth').send(testUser);
   expect(registerRes.status).toBe(200);
