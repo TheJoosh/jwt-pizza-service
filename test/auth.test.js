@@ -161,3 +161,37 @@ test('create order', async () => {
 
   fetchMock.mockRestore();
 });
+
+test('list franchises', async () => {
+  const res = await request(app).get('/api/franchise');
+
+  expect(res.status).toBe(200);
+  expect(res.body).toHaveProperty('franchises');
+  expect(res.body).toHaveProperty('more');
+});
+
+test('create franchise', async () => {
+  const res = await request(app)
+    .post('/api/franchise')
+    .set('Authorization', `Bearer ${adminAuthToken}`)
+    .send({
+      name: `Test franchise ${Date.now()}`,
+      admins: [{ email: adminUser.email }],
+    });
+
+  expect(res.status).toBe(200);
+  expect(res.body).toHaveProperty('id');
+
+  franchiseId = res.body.id;
+});
+
+test('get user franchises', async () => {
+  const user = await DB.getUser(testUser.email, testUser.password);
+
+  const res = await request(app)
+    .get(`/api/franchise/${user.id}`)
+    .set('Authorization', `Bearer ${testUserAuthToken}`);
+
+  expect(res.status).toBe(200);
+  expect(Array.isArray(res.body)).toBe(true);
+});
