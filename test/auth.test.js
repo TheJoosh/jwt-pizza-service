@@ -37,6 +37,24 @@ beforeAll(async () => {
   adminAuthToken = adminLoginRes.body.token;
 });
 
+test('register', async () => {
+  const user = {
+    name: 'another diner',
+    email: `${Math.random().toString(36).substring(2, 12)}@test.com`,
+    password: 'password',
+  };
+
+  const res = await request(app).post('/api/auth').send(user);
+
+  expect(res.status).toBe(200);
+  expect(res.body.token).toMatch(tokenPattern);
+  expect(res.body.user).toMatchObject({
+    name: user.name,
+    email: user.email,
+    roles: [{ role: 'diner' }],
+  });
+});
+
 test('login', async () => {
   const loginRes = await request(app).put('/api/auth').send(testUser);
   const auth = testUserAuthToken;
