@@ -21,21 +21,20 @@ function randomName() {
   return Math.random().toString(36).substring(2, 12);
 }
 
-// async function createAdminUser() {
-//   let user = { password: 'toomanysecrets', roles: [{ role: Role.Admin }] };
-//   user.name = randomName();
-//   user.email = user.name + '@admin.com';
-
-//   await DB.addUser(user);
-//   user.password = 'toomanysecrets';
-
-//   return user;
-// }
 
 beforeAll(async () => {
-  testUser.email = randomName() + '@test.com';
   const registerRes = await request(app).post('/api/auth').send(testUser);
+  expect(registerRes.status).toBe(200);
   testUserAuthToken = registerRes.body.token;
+
+  await DB.addUser({
+    ...adminUser,
+    roles: [{ role: Role.Admin }],
+  });
+
+  const adminLoginRes = await request(app).put('/api/auth').send(adminUser);
+  expect(adminLoginRes.status).toBe(200);
+  adminAuthToken = adminLoginRes.body.token;
 });
 
 test('login', async () => {
