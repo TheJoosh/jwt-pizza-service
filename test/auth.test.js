@@ -195,3 +195,44 @@ test('get user franchises', async () => {
   expect(res.status).toBe(200);
   expect(Array.isArray(res.body)).toBe(true);
 });
+
+test('create franchise store', async () => {
+  const res = await request(app)
+    .post(`/api/franchise/${franchiseId}/store`)
+    .set('Authorization', `Bearer ${adminAuthToken}`)
+    .send({
+      name: `Test store ${Date.now()}`,
+    });
+
+  expect(res.status).toBe(200);
+  expect(res.body).toHaveProperty('id');
+
+  storeId = res.body.id;
+});
+
+test('delete franchise store', async () => {
+  const res = await request(app)
+    .delete(`/api/franchise/${franchiseId}/store/${storeId}`)
+    .set('Authorization', `Bearer ${adminAuthToken}`);
+
+  expect(res.status).toBe(200);
+  expect(res.body).toEqual({ message: 'store deleted' });
+});
+
+test('delete franchise', async () => {
+  const res = await request(app)
+    .delete(`/api/franchise/${franchiseId}`)
+    .set('Authorization', `Bearer ${adminAuthToken}`);
+
+  expect(res.status).toBe(200);
+  expect(res.body).toEqual({ message: 'franchise deleted' });
+});
+
+test('logout', async () => {
+  const res = await request(app)
+    .delete('/api/auth')
+    .set('Authorization', `Bearer ${testUserAuthToken}`);
+
+  expect(res.status).toBe(200);
+  expect(res.body).toEqual({ message: 'logout successful' });
+});
