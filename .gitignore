@@ -4,3 +4,19 @@
 config.js
 coverage
 dist
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+coverage
+node_modules
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+.nyc_output
