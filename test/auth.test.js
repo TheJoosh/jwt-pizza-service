@@ -108,3 +108,56 @@ test('add menu item', async () => {
     expect.arrayContaining([expect.objectContaining(menuItem)]),
   );
 });
+
+test('get orders', async () => {
+  const res = await request(app)
+    .get('/api/order')
+    .set('Authorization', `Bearer ${testUserAuthToken}`);
+
+  expect(res.status).toBe(200);
+  expect(res.body).toHaveProperty('orders');
+  expect(res.body).toHaveProperty('page');
+});
+
+test('get orders', async () => {
+  const res = await request(app)
+    .get('/api/order')
+    .set('Authorization', `Bearer ${testUserAuthToken}`);
+
+  expect(res.status).toBe(200);
+  expect(res.body).toHaveProperty('orders');
+  expect(res.body).toHaveProperty('page');
+});
+
+test('create order', async () => {
+  const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      reportUrl: 'http://factory.test/report',
+      jwt: 'factory-token',
+    }),
+  });
+
+  const order = {
+    franchiseId: 1,
+    storeId: 1,
+    items: [
+      {
+        menuId: 1,
+        description: 'Veggie',
+        price: 0.05,
+      },
+    ],
+  };
+
+  const res = await request(app)
+    .post('/api/order')
+    .set('Authorization', `Bearer ${testUserAuthToken}`)
+    .send(order);
+
+  expect(res.status).toBe(200);
+  expect(res.body).toHaveProperty('order');
+  expect(res.body).toHaveProperty('jwt', 'factory-token');
+
+  fetchMock.mockRestore();
+});
