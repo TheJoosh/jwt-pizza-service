@@ -56,6 +56,23 @@ test('list users', async () => {
   );
 });
 
+test('delete user', async () => {
+  const user = {
+    name: 'pizza diner to delete',
+    email: `${randomName()}@test.com`,
+    password: 'password',
+  };
+  const registerRes = await request(app).post('/api/auth').send(user);
+  expect(registerRes.status).toBe(200);
+
+  const deleteRes = await request(app)
+    .delete(`/api/user/${registerRes.body.user.id}`)
+    .set('Authorization', `Bearer ${adminAuthToken}`);
+
+  expect(deleteRes.status).toBe(204);
+  await expect(DB.getUser(user.email, user.password)).rejects.toThrow('unknown user');
+});
+
 async function registerUser(service) {
   const testUser = {
     name: 'pizza diner',
