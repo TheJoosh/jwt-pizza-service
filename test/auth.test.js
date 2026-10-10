@@ -43,6 +43,17 @@ test('list users', async () => {
     .get('/api/user')
     .set('Authorization', 'Bearer ' + userToken);
   expect(listUsersRes.status).toBe(200);
+  expect(Array.isArray(listUsersRes.body.users)).toBe(true);
+  expect(listUsersRes.body.users).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        roles: user.roles,
+      }),
+    ]),
+  );
 });
 
 async function registerUser(service) {

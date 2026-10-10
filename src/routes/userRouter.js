@@ -8,7 +8,7 @@ const userRouter = express.Router();
 userRouter.docs = [
   {
     method: 'GET',
-    path: '/api/user?page=1&limit=10&name=*',
+    path: '/api/user',
     requiresAuth: true,
     description: 'Gets a list of users',
     example: `curl -X GET localhost:3000/api/user -H 'Authorization: Bearer tttttt'`,
@@ -46,7 +46,8 @@ userRouter.get(
   '/',
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
-    res.json({});
+    const users = await DB.getUsers();
+    res.json({ users });
   }),
 );
 
@@ -83,15 +84,6 @@ userRouter.delete(
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
     res.json({ message: 'not implemented' });
-  })
-);
-
-// listUsers
-userRouter.get(
-  '/',
-  authRouter.authenticateToken,
-  asyncHandler(async (req, res) => {
-    res.json({ message: 'not implemented', users: [], more: false });
   })
 );
 
