@@ -121,4 +121,4 @@ jobs:
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >>  $GITHUB_OUTPUT
       - name: Deploy new container
         run: |
-          aws ecs update-service --cluster jwt-pizza-service --service jwt-pizza-service-service-q81nx469 --force-new-deployment
+          aws ecs update-service --cluster jwt-pizza-service --service jwt-pizza-service --force-new-deployment
