@@ -1,92 +1,117 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Check if host is provided as a command line argument
 if [ -z "$1" ]; then
   echo "Usage: $0 <host>"
-  echo "Example: $0 http://localhost:3000"
   exit 1
 fi
-host=$1
 
-# Trap SIGINT (Ctrl+C) to execute the cleanup function
+host="${1%/}"
+
 cleanup() {
   echo "Terminating background processes..."
-  kill $pid1 $pid2 $pid3 $pid4 $pid5
+  kill "$pid1" "$pid2" "$pid3" "$pid4" "$pid5" 2>/dev/null
+  wait "$pid1" "$pid2" "$pid3" "$pid4" "$pid5" 2>/dev/null
   exit 0
 }
-trap cleanup SIGINT
+trap cleanup INT TERM
 
-# Wrap curl command to return HTTP response codes
-execute_curl() {
-  echo $(eval "curl -s -o /dev/null -w \"%{http_code}\" $1")
+request_status() {
+  curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$@"
 }
 
-# Function to login and get a token
 login() {
-  response=$(curl -s -X PUT $host/api/auth -d "{\"email\":\"$1\", \"password\":\"$2\"}" -H 'Content-Type: application/json')
-  token=$(echo $response | jq -r '.token')
-  echo $token
+  local response status body
+  response=$(curl --silent --show-error --max-time 30 \
+    --write-out $'\n%{http_code}' \
+    --request PUT "$host/api/auth" \
+    --header 'Content-Type: application/json' \
+    --data "{\"email\":\"$1\",\"password\":\"$2\"}")
+  status="${response##*$'\n'}"
+  body="${response%$'\n'*}"
+  if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+    echo "Login request returned HTTP $status" >&2
+    return 1
+  fi
+  jq -er '.token // empty' <<<"$body"
 }
 
-# Simulate a user requesting the menu every 3 seconds
+logout() {
+  request_status \
+    --request DELETE "$host/api/auth" \
+    --header "Authorization: Bearer $1"
+}
+
 while true; do
-  result=$(execute_curl $host/api/order/menu)
-  echo "Requesting menu..." $result
+  result=$(request_status --request GET "$host/api/order/menu")
+  echo "Requesting menu... $result"
   sleep 3
 done &
 pid1=$!
 
-# Simulate a user with an invalid email and password every 25 seconds
 while true; do
-  result=$(execute_curl "-X PUT \"$host/api/auth\" -d '{\"email\":\"unknown@jwt.com\", \"password\":\"bad\"}' -H 'Content-Type: application/json'")
-  echo "Logging in with invalid credentials..." $result
+  result=$(request_status \
+    --request PUT "$host/api/auth" \
+    --header 'Content-Type: application/json' \
+    --data '{"email":"unknown@jwt.com","password":"bad"}')
+  echo "Logging in with invalid credentials... $result"
   sleep 25
 done &
 pid2=$!
 
-# Simulate a franchisee logging in every two minutes
 while true; do
   token=$(login "f@jwt.com" "franchisee")
-  echo "Login franchisee..." $( [ -z "$token" ] && echo "false" || echo "true" )
-  sleep 110
-  result=$(execute_curl "-X DELETE $host/api/auth -H \"Authorization: Bearer $token\"")
-  echo "Logging out franchisee..." $result
+  echo "Login franchisee... $([ -n "$token" ] && echo true || echo false)"
+  if [ -n "$token" ]; then
+    sleep 110
+    echo "Logging out franchisee... $(logout "$token")"
+  else
+    echo "Skipping franchisee logout because login failed"
+  fi
   sleep 10
 done &
 pid3=$!
 
-# Simulate a diner ordering a pizza every 50 seconds
 while true; do
   token=$(login "d@jwt.com" "diner")
-  echo "Login diner..." $( [ -z "$token" ] && echo "false" || echo "true" )
-  result=$(execute_curl "-X POST $host/api/order -H 'Content-Type: application/json' -d '{\"franchiseId\": 1, \"storeId\":1, \"items\":[{ \"menuId\": 1, \"description\": \"Veggie\", \"price\": 0.05 }]}'  -H \"Authorization: Bearer $token\"")
-  echo "Bought a pizza..." $result
-  sleep 20
-  result=$(execute_curl "-X DELETE $host/api/auth -H \"Authorization: Bearer $token\"")
-  echo "Logging out diner..." $result
+  echo "Login diner... $([ -n "$token" ] && echo true || echo false)"
+  if [ -n "$token" ]; then
+    result=$(request_status \
+      --request POST "$host/api/order" \
+      --header 'Content-Type: application/json' \
+      --header "Authorization: Bearer $token" \
+      --data '{"franchiseId":1,"storeId":1,"items":[{"menuId":1,"description":"Veggie","price":0.05}]}')
+    echo "Bought a pizza... $result"
+    sleep 20
+    echo "Logging out diner... $(logout "$token")"
+  else
+    echo "Skipping diner order because login failed"
+  fi
   sleep 30
 done &
 pid4=$!
 
-# Simulate a failed pizza order every 5 minutes
 while true; do
   token=$(login "d@jwt.com" "diner")
-  echo "Login hungry diner..." $( [ -z "$token" ] && echo "false" || echo "true" )
-
-  items='{ "menuId": 1, "description": "Veggie", "price": 0.05 }'
-  for (( i=0; i < 21; i++ ))
-  do items+=', { "menuId": 1, "description": "Veggie", "price": 0.05 }'
-  done
-  
-  result=$(execute_curl "-X POST $host/api/order -H 'Content-Type: application/json' -d '{\"franchiseId\": 1, \"storeId\":1, \"items\":[$items]}'  -H \"Authorization: Bearer $token\"")
-  echo "Bought too many pizzas..." $result  
-  sleep 5
-  result=$(execute_curl "-X DELETE $host/api/auth -H \"Authorization: Bearer $token\"")
-  echo "Logging out hungry diner..." $result
+  echo "Login hungry diner... $([ -n "$token" ] && echo true || echo false)"
+  if [ -n "$token" ]; then
+    item='{"menuId":1,"description":"Veggie","price":0.05}'
+    items="$item"
+    for ((i = 0; i < 21; i++)); do
+      items+=",$item"
+    done
+    result=$(request_status \
+      --request POST "$host/api/order" \
+      --header 'Content-Type: application/json' \
+      --header "Authorization: Bearer $token" \
+      --data "{\"franchiseId\":1,\"storeId\":1,\"items\":[$items]}")
+    echo "Bought too many pizzas... $result"
+    sleep 5
+    echo "Logging out hungry diner... $(logout "$token")"
+  else
+    echo "Skipping failed order because login failed"
+  fi
   sleep 295
 done &
 pid5=$!
 
-
-# Wait for the background processes to complete
-wait $pid1 $pid2 $pid3 $pid4 $pid5
+wait "$pid1" "$pid2" "$pid3" "$pid4" "$pid5"
