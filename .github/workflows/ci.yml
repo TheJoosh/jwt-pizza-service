@@ -89,6 +89,13 @@ jobs:
           version=$(date +'%Y%m%d.%H%M%S')
           echo "version=$version" >> "$GITHUB_OUTPUT"
           printf '{"version": "%s" }' "$version" > src/version.json
+
+      - name: Annotate deployment in Grafana
+        run: |
+          curl -s -X POST https://niftyporch3174.grafana.net/api/annotations \
+          -H "Authorization: Bearer ${{ secrets.GRAFANA_ACCESS_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{"dashboardUID":"thfm8sf", "panelId":1, "tags":["backend","production"], "text":"Version '"$version"' deployed" }'
   
       - name: Update coverage
         run: |
