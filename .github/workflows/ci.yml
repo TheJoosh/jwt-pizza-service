@@ -66,14 +66,16 @@ jobs:
         run: npm test
 
       - name: Create dist
+        env:
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_HOSTNAME: ${{ secrets.DB_HOSTNAME }}
         run: |
           mkdir dist
           cp Dockerfile dist
           cp -r src/* dist
           cp *.json dist
-          sed -i "s/root/${{ secrets.DB_USERNAME }}/g" dist/config.js
-          sed -i "s/tempdbpassword/${{ secrets.DB_PASSWORD }}/g" dist/config.js
-          sed -i "s/127.0.0.1/${{ secrets.DB_HOSTNAME }}/g" dist/config.js
+          node -e "const fs = require('fs'); const path = 'dist/config.js'; let config = fs.readFileSync(path, 'utf8'); config = config.replaceAll('root', process.env.DB_USERNAME).replaceAll('tempdbpassword', process.env.DB_PASSWORD).replaceAll('127.0.0.1', process.env.DB_HOSTNAME); fs.writeFileSync(path, config);"
 
       - name: Update distribution artifact
         uses: actions/upload-artifact@v7.0.2
