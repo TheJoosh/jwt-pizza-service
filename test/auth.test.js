@@ -28,7 +28,9 @@ const mockDB = {
     }
     return { ...user, password: undefined };
   }),
-  getUsers: jest.fn(async () => users.map(({ password, ...user }) => user)),
+  getUsers: jest.fn(async () => users.map((user) => Object.fromEntries(
+    Object.entries(user).filter(([key]) => key !== 'password'),
+  ))),
   deleteUser: jest.fn(async (userId) => {
     const index = users.findIndex((user) => user.id === userId);
     if (index >= 0) {
@@ -269,7 +271,6 @@ test('update current user', async () => {
 
 test('rejects updating another user', async () => {
   DB.updateUser.mockClear();
-  const user = await DB.getUser(testUser.email, testUser.password);
   const admin = await DB.getUser(adminUser.email, adminUser.password);
 
   const res = await request(app)
