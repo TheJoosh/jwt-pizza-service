@@ -91,7 +91,7 @@ done &
 pid4=$!
 
 while true; do
-  token=$(login "d@jwt.com" "diner")
+  token=$(login "h@jwt.com" "diner")
   echo "Login hungry diner... $([ -n "$token" ] && echo true || echo false)"
   if [ -n "$token" ]; then
     item='{"menuId":1,"description":"Veggie","price":0.05}'

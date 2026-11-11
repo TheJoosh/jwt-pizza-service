@@ -66,19 +66,16 @@ test('exports request and authentication metrics', async () => {
     expect.objectContaining({
       name: 'authentication_attempts_total',
       sum: expect.objectContaining({
-        dataPoints: [expect.objectContaining({
-          attributes: [{ key: 'result', value: { stringValue: 'success' } }],
-          asDouble: 1,
-        })],
-      }),
-    }),
-    expect.objectContaining({
-      name: 'authentication_attempts_total',
-      sum: expect.objectContaining({
-        dataPoints: [expect.objectContaining({
-          attributes: [{ key: 'result', value: { stringValue: 'failure' } }],
-          asDouble: 1,
-        })],
+        dataPoints: expect.arrayContaining([
+          expect.objectContaining({
+            attributes: [{ key: 'result', value: { stringValue: 'success' } }],
+            asDouble: 1,
+          }),
+          expect.objectContaining({
+            attributes: [{ key: 'result', value: { stringValue: 'failure' } }],
+            asDouble: 1,
+          }),
+        ]),
       }),
     }),
   ]));

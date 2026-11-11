@@ -129,12 +129,12 @@ function buildMetrics() {
       },
     });
   }
-  for (const [result, count] of state.auth) {
+  if (state.auth.size > 0) {
     metrics.push({
       name: 'authentication_attempts_total',
       unit: 'attempts',
       sum: {
-        dataPoints: [numberDataPoint(count, { result })],
+        dataPoints: [...state.auth].map(([result, count]) => numberDataPoint(count, { result })),
         aggregationTemporality: 2,
         isMonotonic: true,
       },
