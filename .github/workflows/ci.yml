@@ -90,13 +90,6 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           printf '{"version": "%s" }' "$version" > src/version.json
 
-      - name: Annotate deployment in Grafana
-        run: |
-          curl -s -X POST https://niftyporch3174.grafana.net/api/annotations \
-          -H "Authorization: Bearer ${{ secrets.GRAFANA_ACCESS_TOKEN }}" \
-          -H "Content-Type: application/json" \
-          -d '{"dashboardUID":"thfm8sf", "panelId":1, "tags":["backend","production"], "text":"Version '"$version"' deployed" }'
-  
       - name: Update coverage
         run: |
           coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json)
@@ -110,23 +103,29 @@ jobs:
     env:
       version: ${{needs.build.outputs.version}}
     steps:
+    
       - name: Download distribution artifact
         uses: actions/download-artifact@v8.0.2
         with:
           name: package
+
       - name: Create OIDC token to AWS
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           audience: sts.amazonaws.com
           aws-region: us-east-1
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT }}:role/${{ secrets.CI_IAM_ROLE }}
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
       - name: Set up machine emulation
         uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker build
         uses: docker/setup-buildx-action@v3
+
       - name: Build and push container image
         id: build-image
         env:
@@ -135,6 +134,15 @@ jobs:
         run: |
           docker build --platform=linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY --push .
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >>  $GITHUB_OUTPUT
+
       - name: Deploy new container
         run: |
           aws ecs update-service --cluster jwt-pizza-service --service jwt-pizza-service --force-new-deployment
+      
+      - name: Annotate deployment in Grafana
+        run: |
+          curl -s -X POST https://niftyporch3174.grafana.net/api/annotations \
+          -H "Authorization: Bearer ${{ secrets.GRAFANA_ACCESS_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{"dashboardUID":"thfm8sf", "panelId":1, "tags":["backend","production"], "text":"Version '"$version"' deployed" }'
+  
