@@ -6,7 +6,10 @@ const histogramBuckets = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
 
 const state = {
   requests: new Map(),
-  auth: new Map(),
+  auth: new Map([
+    ['success', 0],
+    ['failure', 0],
+  ]),
   activeUsers: new Map(),
   pizzasSold: 0,
   pizzaCreationFailures: 0,
@@ -129,17 +132,15 @@ function buildMetrics() {
       },
     });
   }
-  if (state.auth.size > 0) {
-    metrics.push({
-      name: 'authentication_attempts_total',
-      unit: 'attempts',
-      sum: {
-        dataPoints: [...state.auth].map(([result, count]) => numberDataPoint(count, { result })),
-        aggregationTemporality: 2,
-        isMonotonic: true,
-      },
-    });
-  }
+  metrics.push({
+    name: 'authentication_attempts_total',
+    unit: 'attempts',
+    sum: {
+      dataPoints: [...state.auth].map(([result, count]) => numberDataPoint(count, { result })),
+      aggregationTemporality: 2,
+      isMonotonic: true,
+    },
+  });
 
   const counters = [
     ['pizzas_sold_total', state.pizzasSold, 'pizzas'],
