@@ -37,6 +37,8 @@ test('exports request and authentication metrics', async () => {
     path: '/api/auth',
     durationMs: 75,
   });
+  metrics.recordAuthenticationAttempt('success');
+  metrics.recordAuthenticationAttempt('failure');
 
   await metrics.sendMetrics();
 

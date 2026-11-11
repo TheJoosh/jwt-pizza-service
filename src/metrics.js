@@ -23,7 +23,7 @@ function increment(map, key, amount = 1) {
   map.set(key, (map.get(key) || 0) + amount);
 }
 
-function recordRequest({ method, statusCode, path, durationMs, userId }) {
+function recordRequest({ method, durationMs, userId }) {
   increment(state.requests, 'total');
   increment(state.requests, method);
 
@@ -31,11 +31,11 @@ function recordRequest({ method, statusCode, path, durationMs, userId }) {
     state.activeUsers.set(String(userId), Date.now());
   }
 
-  if (method === 'PUT' && path === '/api/auth') {
-    increment(state.auth, statusCode >= 200 && statusCode < 300 ? 'success' : 'failure');
-  }
-
   state.requestLatency.push(durationMs);
+}
+
+function recordAuthenticationAttempt(result) {
+  increment(state.auth, result);
 }
 
 function recordOrder({ statusCode, durationMs, itemCount, revenueBitcoin }) {
@@ -213,6 +213,7 @@ function sendMetricsPeriodically(period = 15000) {
 
 module.exports = {
   recordRequest,
+  recordAuthenticationAttempt,
   recordOrder,
   sendMetrics,
   sendMetricsPeriodically,
