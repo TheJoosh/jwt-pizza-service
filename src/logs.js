@@ -4,6 +4,7 @@ const config = require('./config.js');
 const requestContext = new AsyncLocalStorage();
 const logQueue = [];
 let flushingLogs = false;
+let flushTimer;
 const sensitiveKey = /(authorization|cookie|password|secret|token|jwt|api[-_]?key|credential|private[-_]?key)/i;
 const sensitiveText = /(bearer\s+[a-z0-9._-]+|basic\s+[a-z0-9+/=]+|(?:password|secret|token|jwt|api[-_]?key|credential)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;}]+))/ig;
 
@@ -45,7 +46,13 @@ function queueLog(entry) {
     logQueue.shift();
   }
   logQueue.push(entry);
-  flushLogs();
+  if (!flushTimer) {
+    flushTimer = setTimeout(() => {
+      flushTimer = undefined;
+      flushLogs();
+    }, 100);
+    flushTimer.unref();
+  }
 }
 
 async function flushLogs() {
@@ -55,20 +62,42 @@ async function flushLogs() {
   flushingLogs = true;
   try {
     while (logQueue.length > 0) {
-      await sendLog(logQueue.shift());
+      await sendLogs(logQueue.splice(0, 100));
     }
   } finally {
     flushingLogs = false;
   }
 }
 
-async function sendLog(entry) {
+async function sendLogs(entries) {
   const { endpointUrl, accountId, apiKey, source } = config.logging || {};
   if (!endpointUrl || !accountId || !apiKey) {
     return;
   }
 
   try {
+    const streams = [...entries.reduce((groups, entry) => {
+      const logType = entry.type || 'application';
+      if (!groups.has(logType)) {
+        groups.set(logType, []);
+      }
+      groups.get(logType).push(entry);
+      return groups;
+    }, new Map())].map(([logType, groupedEntries]) => {
+      let previousTimestamp = 0;
+      const values = groupedEntries.map((entry) => {
+        const timestamp = Math.max(Date.parse(entry.timestamp) * 1000000, previousTimestamp + 1);
+        previousTimestamp = timestamp;
+        return [String(timestamp), JSON.stringify(entry)];
+      });
+      return {
+        stream: {
+          service_name: source || 'jwt-pizza-service',
+          log_type: logType,
+        },
+        values,
+      };
+    });
     const response = await fetch(endpointUrl, {
       method: 'POST',
       signal: AbortSignal.timeout(5000),
@@ -77,20 +106,12 @@ async function sendLog(entry) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        streams: [{
-          stream: {
-            service_name: source || 'jwt-pizza-service',
-            log_type: entry.type || 'application',
-          },
-          values: [[
-            String(Date.now() * 1000000),
-            JSON.stringify(entry),
-          ]],
-        }],
+        streams,
       }),
     });
     if (!response.ok) {
-      throw new Error(`Log export failed with HTTP ${response.status}`);
+      const body = await response.text();
+      throw new Error(`Log export failed with HTTP ${response.status}: ${body}`);
     }
   } catch (error) {
     console.error('Error sending logs:', error.message);
@@ -214,5 +235,5 @@ module.exports = {
   requestLogger,
   registerProcessExceptionHandlers,
   sanitize,
-  sendLog,
+  sendLogs,
 };
