@@ -1,8 +1,10 @@
 const app = require('./service.js');
 const config = require('./config.js');
 const { sendMetricsPeriodically } = require('./metrics.js');
+const { registerProcessExceptionHandlers } = require('./logs.js');
 
 const port = process.argv[2] || 3000;
+registerProcessExceptionHandlers();
 if (config.metrics.enabled) {
   sendMetricsPeriodically();
 }

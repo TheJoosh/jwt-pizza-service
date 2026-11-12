@@ -4,6 +4,7 @@ const config = require('../config.js');
 const { StatusCodeError } = require('../endpointHelper.js');
 const { Role } = require('../model/model.js');
 const dbModel = require('./dbModel.js');
+const { instrumentDatabaseConnection, logException } = require('../logs.js');
 class DB {
   constructor() {
     this.initialized = this.initializeDatabase();
@@ -347,13 +348,13 @@ class DB {
   }
 
   async _getConnection(setUse = true) {
-    const connection = await mysql.createConnection({
+    const connection = instrumentDatabaseConnection(await mysql.createConnection({
       host: config.db.connection.host,
       user: config.db.connection.user,
       password: config.db.connection.password,
       connectTimeout: config.db.connection.connectTimeout,
       decimalNumbers: true,
-    });
+    }));
     if (setUse) {
       await connection.query(`USE ${config.db.connection.database}`);
     }
@@ -386,7 +387,7 @@ class DB {
         connection.end();
       }
     } catch (err) {
-      console.error(JSON.stringify({ message: 'Error initializing database', exception: err.message, connection: config.db.connection }));
+      logException(err, { type: 'database' });
     }
   }
 

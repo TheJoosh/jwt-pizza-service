@@ -7,8 +7,10 @@ const version = require('./version.json');
 const config = require('./config.js');
 const metricsRequestMiddleware = require('./middleware/metricsRequestMiddleware.js');
 const metricsOrderMiddleware = require('./middleware/metricsOrderMiddleware.js');
+const { logException, requestLogger } = require('./logs.js');
 
 const app = express();
+app.use(requestLogger);
 app.use(express.json());
 app.use(setAuthUser);
 app.use(metricsRequestMiddleware);
@@ -51,8 +53,9 @@ app.use('*', (req, res) => {
 
 // Default error handler for all exceptions and errors.
 app.use((err, req, res, next) => {
-  res.status(err.statusCode ?? 500).json({ message: err.message, stack: err.stack });
-  next();
+  void next;
+  logException(err, { type: 'http', method: req.method, path: req.originalUrl, user: req.user });
+  res.status(err.statusCode ?? 500).json({ message: err.message });
 });
 
 module.exports = app;
