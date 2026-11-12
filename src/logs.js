@@ -2,6 +2,8 @@ const { AsyncLocalStorage } = require('async_hooks');
 const config = require('./config.js');
 
 const requestContext = new AsyncLocalStorage();
+const logQueue = [];
+let flushingLogs = false;
 const sensitiveKey = /(authorization|cookie|password|secret|token|jwt|api[-_]?key|credential|private[-_]?key)/i;
 const sensitiveText = /(bearer\s+[a-z0-9._-]+|basic\s+[a-z0-9+/=]+|(?:password|secret|token|jwt|api[-_]?key|credential)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;}]+))/ig;
 
@@ -35,7 +37,29 @@ function writeLog(entry) {
   });
   const line = JSON.stringify(sanitizedEntry);
   console.log(line);
-  return sendLog(sanitizedEntry);
+  queueLog(sanitizedEntry);
+}
+
+function queueLog(entry) {
+  if (logQueue.length >= 1000) {
+    logQueue.shift();
+  }
+  logQueue.push(entry);
+  flushLogs();
+}
+
+async function flushLogs() {
+  if (flushingLogs) {
+    return;
+  }
+  flushingLogs = true;
+  try {
+    while (logQueue.length > 0) {
+      await sendLog(logQueue.shift());
+    }
+  } finally {
+    flushingLogs = false;
+  }
 }
 
 async function sendLog(entry) {
@@ -47,6 +71,7 @@ async function sendLog(entry) {
   try {
     const response = await fetch(endpointUrl, {
       method: 'POST',
+      signal: AbortSignal.timeout(5000),
       headers: {
         Authorization: `Basic ${Buffer.from(`${accountId}:${apiKey}`).toString('base64')}`,
         'Content-Type': 'application/json',
