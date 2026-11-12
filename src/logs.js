@@ -1,4 +1,5 @@
 const { AsyncLocalStorage } = require('async_hooks');
+const config = require('./config.js');
 
 const requestContext = new AsyncLocalStorage();
 const sensitiveKey = /(authorization|cookie|password|secret|token|jwt|api[-_]?key|credential|private[-_]?key)/i;
@@ -28,10 +29,47 @@ function sanitize(value, key = '') {
 }
 
 function writeLog(entry) {
-  console.log(JSON.stringify(sanitize({
+  const sanitizedEntry = sanitize({
     timestamp: new Date().toISOString(),
     ...entry,
-  })));
+  });
+  const line = JSON.stringify(sanitizedEntry);
+  console.log(line);
+  return sendLog(sanitizedEntry);
+}
+
+async function sendLog(entry) {
+  const { endpointUrl, accountId, apiKey, source } = config.logging || {};
+  if (!endpointUrl || !accountId || !apiKey) {
+    return;
+  }
+
+  try {
+    const response = await fetch(endpointUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${accountId}:${apiKey}`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        streams: [{
+          stream: {
+            service_name: source || 'jwt-pizza-service',
+            log_type: entry.type || 'application',
+          },
+          values: [[
+            String(Date.now() * 1000000),
+            JSON.stringify(entry),
+          ]],
+        }],
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Log export failed with HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Error sending logs:', error.message);
+  }
 }
 
 function currentUser() {
@@ -151,4 +189,5 @@ module.exports = {
   requestLogger,
   registerProcessExceptionHandlers,
   sanitize,
+  sendLog,
 };
