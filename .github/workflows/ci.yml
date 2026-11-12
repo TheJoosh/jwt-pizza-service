@@ -37,37 +37,17 @@ jobs:
         run: npm run lint
  
       - name: Write config file
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+          METRICS_ENDPOINT_URL: ${{ secrets.METRICS_ENDPOINT_URL }}
+          METRICS_API_KEY: ${{ secrets.METRICS_API_KEY }}
+          METRICS_ACCOUNT_ID: ${{ secrets.METRICS_ACCOUNT_ID }}
+          LOGGING_ENDPOINT_URL: ${{ secrets.LOGGING_ENDPOINT_URL }}
+          LOGGING_API_KEY: ${{ secrets.LOGGING_API_KEY }}
+          LOGGING_ACCOUNT_ID: ${{ secrets.LOGGING_ACCOUNT_ID }}
         run: |
-          echo "module.exports = {
-            jwtSecret: '${{ secrets.JWT_SECRET }}',
-            db: {
-              connection: {
-                host: '127.0.0.1',
-                user: 'root',
-                password: 'tempdbpassword',
-                database: 'pizza',
-                connectTimeout: 60000,
-              },
-              listPerPage: 10,
-            },
-            factory: {
-              url: 'https://pizza-factory.cs329.click',
-              apiKey: '${{ secrets.FACTORY_API_KEY }}',
-            },
-            metrics: {
-              enabled: true,
-              source: 'jwt-pizza-service',
-              endpointUrl: '${{ secrets.METRICS_ENDPOINT_URL }}',
-              apiKey: '${{ secrets.METRICS_API_KEY }}',
-              accountId: '${{ secrets.METRICS_ACCOUNT_ID }}',
-            },
-            logging:    {
-              source: 'jwt-pizza-service',
-              accountId: '${{ secrets.LOGGING_ACCOUNT_ID }}',
-              endpointUrl: '${{ secrets.LOGGING_ENDPOINT_URL }}',
-              apiKey: '${{ secrets.LOGGING_API_KEY }}',
-            },
-          };" > src/config.js
+          node -e "const fs = require('fs'); const config = { jwtSecret: process.env.JWT_SECRET, db: { connection: { host: '127.0.0.1', user: 'root', password: 'tempdbpassword', database: 'pizza', connectTimeout: 60000 }, listPerPage: 10 }, factory: { url: 'https://pizza-factory.cs329.click', apiKey: process.env.FACTORY_API_KEY }, metrics: { enabled: true, source: 'jwt-pizza-service', endpointUrl: process.env.METRICS_ENDPOINT_URL, apiKey: process.env.METRICS_API_KEY, accountId: process.env.METRICS_ACCOUNT_ID }, logging: { source: 'jwt-pizza-service', endpointUrl: process.env.LOGGING_ENDPOINT_URL, apiKey: process.env.LOGGING_API_KEY, accountId: process.env.LOGGING_ACCOUNT_ID } }; fs.writeFileSync('src/config.js', 'module.exports = ' + JSON.stringify(config, null, 2) + ';\\n');"
       - name: Tests
         run: npm test
 
@@ -81,7 +61,7 @@ jobs:
           cp Dockerfile dist
           cp -r src/* dist
           cp *.json dist
-          node -e "const fs = require('fs'); const path = 'dist/config.js'; let config = fs.readFileSync(path, 'utf8'); config = config.replaceAll('root', process.env.DB_USERNAME).replaceAll('tempdbpassword', process.env.DB_PASSWORD).replaceAll('127.0.0.1', process.env.DB_HOSTNAME); fs.writeFileSync(path, config);"
+          node -e "const fs = require('fs'); const path = 'dist/config.js'; const config = require('./dist/config.js'); config.db.connection.user = process.env.DB_USERNAME; config.db.connection.password = process.env.DB_PASSWORD; config.db.connection.host = process.env.DB_HOSTNAME; fs.writeFileSync(path, 'module.exports = ' + JSON.stringify(config, null, 2) + ';\\n');"
 
       - name: Update distribution artifact
         uses: actions/upload-artifact@v7.0.2
